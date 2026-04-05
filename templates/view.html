@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InkFlow — العرض المباشر</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --accent: #c84b31; --gold: #d4a853; }
+
+    html, body { width:100%; height:100%; font-family:'Tajawal',sans-serif; overflow:hidden; }
+
+    /* ── BACKGROUNDS ── */
+    .bg-w {
+      position:fixed; inset:0; z-index:0;
+      background: url('/static/images/bg_welcome.jpg') center/cover no-repeat;
+      transition: opacity 0.7s ease;
+      /* تم إزالة أي تأثير شفافية هنا لتظهر الصورة بوضوح كامل */
+    }
+    
+    .bg-v {
+      position:fixed; inset:0; z-index:0;
+      background: url('/static/images/bg_view.jpg') center/cover no-repeat;
+      opacity:0; transition: opacity 0.7s ease;
+    }
+    
+    /* الطبقة الشفافة فقط لصفحة العرض وليس صفحة الترحيب */
+    
+
+    .bg-v.active { opacity:1; }
+    .bg-w.fade   { opacity:0; }
+
+    /* SCANLINES on view */
+    .bg-v::before {
+      content:''; position:absolute; inset:0; z-index:1;
+      background: repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.03) 3px,rgba(0,0,0,0.03) 4px);
+      pointer-events:none;
+    }
+
+    /* ══ WELCOME SCREEN ══ */
+    #welcome {
+      position:fixed; inset:0; z-index:100;
+      display:flex; align-items:center; justify-content:center;
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    #welcome.out { opacity:0; pointer-events:none; transform:scale(1.04); }
+
+    /* ══ VIEW UI ══ */
+    #view-ui {
+      position:fixed; inset:0; z-index:50;
+      display:flex; flex-direction:column;
+      opacity:0; pointer-events:none;
+      transition: opacity 0.55s ease;
+    }
+    #view-ui.in { opacity:1; pointer-events:all; }
+
+    /* TOP BAR */
+    .topbar {
+      flex-shrink:0;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:11px 22px;
+      background:rgba(5,5,15,0.74);
+      backdrop-filter:blur(18px);
+      border-bottom:1px solid rgba(255,255,255,0.07);
+    }
+    .brand { display:flex; align-items:center; gap:14px; }
+    .live-pill {
+      display:flex; align-items:center; gap:7px;
+      background:rgba(74,222,128,0.1);
+      border:1px solid rgba(74,222,128,0.2);
+      border-radius:100px; padding:6px 14px;
+    }
+    .lp-dot { width:7px; height:7px; border-radius:50%; background:#4ade80; box-shadow:0 0 10px #4ade80; animation:blink 1.2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+    .lp-text { font-size:12px; color:#4ade80; font-weight:600; letter-spacing:2px; }
+    .brand-text .bn { font-size:18px; font-weight:800; color:rgba(255,255,255,0.9); }
+    .brand-text .bs { font-size:10px; color:rgba(255,255,255,0.3); letter-spacing:2px; }
+
+    .top-right { display:flex; align-items:center; gap:18px; }
+    .stroke-ctr { text-align:center; }
+    .ctr-n { font-size:22px; font-weight:700; color:var(--gold); line-height:1; }
+    .ctr-l { font-size:10px; color:rgba(255,255,255,0.3); letter-spacing:1.5px; }
+
+    .back-btn {
+      display:flex; align-items:center; gap:8px;
+      padding:9px 16px; border-radius:9px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.05);
+      color:rgba(255,255,255,0.6);
+      font-family:'Tajawal',sans-serif; font-size:13px; font-weight:600;
+      cursor:pointer; text-decoration:none; transition:all 0.2s ease;
+    }
+    .back-btn:active { background:rgba(255,255,255,0.1); color:white; }
+    .back-btn svg { width:14px; height:14px; }
+
+    /* VIEW AREA */
+    .view-area { flex:1; position:relative; overflow:hidden; }
+
+    .corner { position:absolute; width:24px; height:24px; border-color:rgba(200,75,49,0.5); border-style:solid; z-index:5; }
+    .c-tl { top:16px; right:16px; border-width:2px 0 0 2px; }
+    .c-tr { top:16px; left:16px;  border-width:2px 2px 0 0; }
+    .c-bl { bottom:16px; right:16px; border-width:0 0 2px 2px; }
+    .c-br { bottom:16px; left:16px;  border-width:0 2px 2px 0; }
+
+    #canvas { display:block; width:100%; height:100%; background:transparent; }
+
+    .writing-badge {
+      position:absolute; bottom:22px;
+      left:50%; transform:translateX(-50%);
+      display:flex; align-items:center; gap:9px;
+      background:rgba(5,5,15,0.75);
+      backdrop-filter:blur(12px);
+      border:1px solid rgba(255,255,255,0.1);
+      border-radius:100px; padding:9px 20px;
+      opacity:0; transition:opacity 0.3s ease; z-index:6;
+    }
+    .writing-badge.show { opacity:1; }
+    .wb-text { font-size:13px; color:rgba(255,255,255,0.55); }
+    .wb-dots span {
+      display:inline-block; width:4px; height:4px; border-radius:50%;
+      background:var(--accent); margin:0 2px;
+      animation:db 1.2s ease infinite;
+    }
+    .wb-dots span:nth-child(2){animation-delay:0.2s}
+    .wb-dots span:nth-child(3){animation-delay:0.4s}
+    @keyframes db { 0%,100%{transform:translateY(0);opacity:0.4} 50%{transform:translateY(-5px);opacity:1} }
+
+    .clear-flash {
+      position:absolute; inset:0;
+      background:rgba(255,255,255,0.22);
+      opacity:0; pointer-events:none; z-index:10;
+    }
+    @keyframes fo { 0%{opacity:1} 100%{opacity:0} }
+    .clear-flash.flash { animation:fo 0.4s ease forwards; }
+
+    .statusbar {
+      flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; gap:30px;
+      padding:9px 22px;
+      background:rgba(0,0,0,0.48);
+      backdrop-filter:blur(12px);
+      border-top:1px solid rgba(255,255,255,0.04);
+    }
+    .st-item { display:flex; align-items:center; gap:7px; font-size:11px; color:rgba(255,255,255,0.25); letter-spacing:1.5px; }
+    .st-item svg { width:13px; height:13px; opacity:0.5; }
+  </style>
+</head>
+<body>
+
+<div class="bg-w" id="bgW"></div>
+<div class="bg-v" id="bgV"></div>
+
+<div id="welcome"></div>
+
+<div id="view-ui">
+
+
+  <div class="view-area">
+    <div class="corner c-tl"></div>
+    <div class="corner c-tr"></div>
+    <div class="corner c-bl"></div>
+    <div class="corner c-br"></div>
+    <canvas id="canvas"></canvas>
+    <div class="clear-flash" id="clearFlash"></div>
+    <div class="writing-badge" id="wb">
+     
+      <div class="wb-dots"><span></span><span></span><span></span></div>
+    </div>
+  </div>
+
+ 
+</div>
+
+<script>
+const socket = io();
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let strokeCount = 0, wTimer = null;
+
+function startView() {
+  document.getElementById('welcome').classList.add('out');
+  document.getElementById('view-ui').classList.add('in');
+  document.getElementById('bgV').classList.add('active');
+  document.getElementById('bgW').classList.add('fade');
+  setTimeout(resizeCanvas, 100);
+}
+
+function resetView() {
+  document.getElementById('view-ui').classList.remove('in');
+  document.getElementById('welcome').classList.remove('out');
+  document.getElementById('bgV').classList.remove('active');
+  document.getElementById('bgW').classList.remove('fade');
+  strokeCount = 0;
+  document.getElementById('strokeCount').textContent = '0';
+}
+
+function resizeCanvas() {
+  const area = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const w = area.clientWidth, h = area.clientHeight;
+  canvas.width  = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.scale(dpr, dpr);
+}
+window.addEventListener('resize', resizeCanvas);
+
+function showWriting() {
+  const b = document.getElementById('wb');
+  b.classList.add('show');
+  clearTimeout(wTimer);
+  wTimer = setTimeout(() => b.classList.remove('show'), 1600);
+}
+
+socket.on('stroke', d => {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  ctx.globalAlpha = d.opacity;
+  ctx.strokeStyle = d.color;
+  ctx.lineWidth   = d.size;
+  ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(d.nx0 * w, d.ny0 * h);
+  ctx.lineTo(d.nx1 * w, d.ny1 * h);
+  ctx.stroke();
+  strokeCount++;
+  document.getElementById('strokeCount').textContent = strokeCount.toLocaleString('ar');
+  showWriting();
+});
+
+socket.on('clear', () => {
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  strokeCount = 0;
+  document.getElementById('strokeCount').textContent = '0';
+  const f = document.getElementById('clearFlash');
+  f.classList.remove('flash'); void f.offsetWidth; f.classList.add('flash');
+});
+
+socket.on('start_session', () => {
+  startView(); 
+  showWriting(); 
+});
+
+socket.on('end_session', () => {
+  resetView();
+});
+</script>
+</body>
+</html>

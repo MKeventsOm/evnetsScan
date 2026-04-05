@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AI Assist</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --accent: #c84b31; --gold: #d4a853; --muted: #7a7060; }
+
+    html, body {
+      width: 100%; height: 100%;
+      font-family: 'Tajawal', sans-serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    /* ── BACKGROUNDS ── */
+    .bg-welcome {
+      position: fixed; inset: 0; z-index: 0;
+      background: url('/static/images/bg_welcome.jpg') center/cover no-repeat;
+      transition: opacity 0.7s ease;
+    }
+    .bg-draw {
+      position: fixed; inset: 0; z-index: 0;
+      background: url('/static/images/bg_draw.jpg') center/cover no-repeat;
+      opacity: 0;
+      transition: opacity 0.7s ease;
+    }
+    .bg-draw.active { opacity: 1; }
+    .bg-welcome.fade { opacity: 0; }
+
+    /* Dark overlay on both */
+   
+
+    /* ══════════════════════════════════
+       WELCOME SCREEN
+    ══════════════════════════════════ */
+    #welcome {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    #welcome.out {
+      opacity: 0; pointer-events: none;
+      transform: scale(1.05);
+    }
+
+    .welcome-card {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 26px;
+      padding: 52px 60px;
+      background:rgb(16 38 60);
+      backdrop-filter: blur(28px) saturate(1.4);
+      -webkit-backdrop-filter: blur(28px);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 28px;
+      box-shadow: 0 40px 100px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.1);
+      max-width: 460px; width: 90%;
+      text-align: center;
+    }
+
+    .wc-logo { display: flex; align-items: center; gap: 14px; }
+    .wc-icon {
+      width: 54px; height: 54px;
+      background: var(--accent);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 32px rgba(200,75,49,0.55);
+      flex-shrink: 0;
+    }
+    .wc-icon svg { width: 28px; height: 28px; color: white; }
+    .wc-name { font-size: 38px; font-weight: 900; color: white; letter-spacing: -1.5px; }
+
+    .wc-divider {
+      width: 50px; height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--gold));
+      border-radius: 2px;
+    }
+
+    .wc-title { font-size: 21px; font-weight: 700; color: rgba(255,255,255,0.95); }
+    .wc-sub { font-size: 14px; color: rgba(255,255,255,0.45); font-weight: 300; line-height: 1.7; margin-top: 6px; }
+
+    .wc-features {
+      display: flex; flex-direction: column; gap: 10px;
+      width: 100%;
+      padding: 16px 18px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .wc-feat {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: rgba(255,255,255,0.6);
+    }
+    .wc-feat-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+    .btn-start {
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+      width: 100%; padding: 18px 28px;
+      background: var(--accent); color: white;
+      border: none; border-radius: 14px;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 19px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 8px 32px rgba(200,75,49,0.45);
+      transition: all 0.2s ease; letter-spacing: 0.3px;
+    }
+    .btn-start:active { transform: scale(0.97); }
+    .btn-start svg { width: 22px; height: 22px; }
+
+    /* ══════════════════════════════════
+       DRAWING UI
+    ══════════════════════════════════ */
+    #drawing-ui {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; flex-direction: column;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.55s ease;
+    }
+    #drawing-ui.in { opacity: 1; pointer-events: all; }
+
+    /* TOP BAR */
+    .topbar {
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 20px;
+      background: rgba(6,6,16,0.72);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .tb-logo { display: flex; align-items: center; gap: 9px; }
+    .tb-icon {
+      width: 32px; height: 32px; background: var(--accent);
+      border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    }
+    .tb-icon svg { width: 17px; height: 17px; color: white; }
+    .tb-name { font-size: 17px; font-weight: 800; color: rgba(255,255,255,0.92); }
+
+    .tb-actions { display: flex; gap: 9px; align-items: center; }
+
+    .btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 9px 15px; border-radius: 10px;
+      border: none; cursor: pointer;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 13px; font-weight: 600;
+      transition: all 0.18s ease;
+    }
+    .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+    .btn-erase {
+      background: rgba(255,255,255,0.07);
+      color: rgba(255,255,255,0.55);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-erase:active { background: rgba(255,100,80,0.2); color: #ff6644; }
+
+    .btn-save {
+      background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+      color: white;
+      box-shadow: 0 4px 18px rgba(22,163,74,0.4);
+    }
+    .btn-save:active { transform: scale(0.96); }
+
+    .btn-live {
+      background: var(--accent);
+      color: white;
+      box-shadow: 0 4px 18px rgba(200,75,49,0.4);
+    }
+    .btn-live:active { transform: scale(0.96); }
+
+    /* TOOLBAR */
+    .toolbar {
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 20px;
+      background: rgba(6,6,16,0.6);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      overflow-x: auto;
+    }
+    .toolbar::-webkit-scrollbar { display: none; }
+
+    .tb-label {
+      font-size: 10px; color: var(--muted);
+      letter-spacing: 2px; white-space: nowrap;
+    }
+    .tb-div { width: 1px; height: 24px; background: rgba(255,255,255,0.08); margin: 0 5px; flex-shrink: 0; }
+
+    .swatch {
+      width: 27px; height: 27px; border-radius: 50%;
+      border: 2.5px solid transparent; cursor: pointer;
+      transition: all 0.18s ease; flex-shrink: 0;
+    }
+    .swatch.on, .swatch:active {
+      transform: scale(1.22);
+      border-color: rgba(255,255,255,0.75);
+      box-shadow: 0 0 10px rgba(255,255,255,0.15);
+    }
+
+    .szb {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 9px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      cursor: pointer; transition: all 0.18s ease; flex-shrink: 0;
+    }
+    .szb.on, .szb:active { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.35); }
+    .szdot { background: white; border-radius: 50%; }
+
+    .opa-slider {
+      -webkit-appearance: none;
+      width: 82px; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.15); outline: none; cursor: pointer;
+    }
+    .opa-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: white; box-shadow: 0 0 6px rgba(0,0,0,0.4);
+    }
+
+    /* CANVAS */
+    .canvas-wrap {
+      flex: 1; position: relative; overflow: hidden;
+    }
+    #canvas {
+      display: block; width: 100%; height: 100%;
+      touch-action: none; cursor: crosshair;
+      background: transparent;
+    }
+
+    /* STATUS BAR */
+    .statusbar {
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 20px;
+      background: rgba(0,0,0,0.52);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .st-text { font-size: 11px; color: rgba(255,255,255,0.28); letter-spacing: 1px; }
+    .live-pill {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #4ade80; letter-spacing: 1px;
+    }
+    .live-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #4ade80; box-shadow: 0 0 8px #4ade80;
+      animation: lp 1.5s ease-in-out infinite;
+    }
+    @keyframes lp { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 90px;
+      left: 50%; transform: translateX(-50%) translateY(16px);
+      background: rgba(22,163,74,0.96);
+      color: white; padding: 13px 26px;
+      border-radius: 100px; font-size: 15px; font-weight: 600;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+      z-index: 999; opacity: 0; pointer-events: none;
+      transition: all 0.3s ease;
+      display: flex; align-items: center; gap: 9px;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast svg { width: 18px; height: 18px; }
+  </style>
+</head>
+<body>
+
+<!-- BACKGROUNDS -->
+<div class="bg-welcome" id="bgWelcome"></div>
+<div class="bg-draw" id="bgDraw"></div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+ Picture saved successfully!
+</div>
+
+<!-- ══ WELCOME ══ -->
+<div id="welcome">
+  <div class="welcome-card">
+
+   
+         <div class="wc-logo">
+      <div class="wc-icon" style="background: none; box-shadow: none;">
+        <img src="/static/images/logo.png" alt="Wamda Logo" style="width: 100%; height: 100%; object-fit: contain;">
+      </div>
+      <span class="wc-name">AI Assist</span>
+</div>
+      
+   
+
+    <div class="wc-divider"></div>
+
+    <div>
+    <div class="wc-title">Interactive Review Board</div>
+<div class="wc-sub">Write with an iPad pen or your finger<br>and the display appears directly on the screen</div>
+    </div>
+
+    <div class="wc-features">
+     <div class="wc-feat"><div class="wc-feat-dot" style="background:#c84b31"></div>7 colors + size and opacity control</div>
+<div class="wc-feat"><div class="wc-feat-dot" style="background:#d4a853"></div>Press save to save the image and finish</div>
+    </div>
+
+    <button class="btn-start" onclick="startDrawing()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+      </svg>
+      start Writing
+    </button>
+
+  </div>
+</div>
+
+<!-- ══ DRAWING UI ══ -->
+<div id="drawing-ui">
+
+  <div class="topbar">
+   <div class="tb-logo">
+      <div class="tb-icon" style="background: none; box-shadow: none;">
+        <img src="/static/images/logo.png" alt="Wamda Logo" style="width: 100%; height: 100%; object-fit: contain;">
+      </div>
+      <span class="tb-name">AI Assist</span>
+</div>
+  
+  
+    
+    <div class="tb-actions">
+      <button class="btn btn-erase" onclick="clearCanvas()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+        </svg>
+        delete
+      </button>
+      <button class="btn btn-save" onclick="saveAndReturn()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        save and end
+      </button>
+    
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <span class="tb-label">color</span>
+    <div class="swatch on"  style="background:#ffffff"                              data-color="#ffffff" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#f8c84b"                              data-color="#f8c84b" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#c84b31"                              data-color="#c84b31" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#60a5fa"                              data-color="#60a5fa" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#4ade80"                              data-color="#4ade80" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#f472b6"                              data-color="#f472b6" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#d4a853"                              data-color="#d4a853" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#1a1a2e;border:1px solid rgba(255,255,255,0.25)" data-color="#1a1a2e" onclick="setColor(this)"></div>
+
+    <div class="tb-div"></div>
+    <span class="tb-label">size</span>
+    <div class="szb on"  data-size="2"  onclick="setSize(this)"><div class="szdot" style="width:4px;height:4px"></div></div>
+    <div class="szb"     data-size="5"  onclick="setSize(this)"><div class="szdot" style="width:8px;height:8px"></div></div>
+    <div class="szb"     data-size="10" onclick="setSize(this)"><div class="szdot" style="width:13px;height:13px"></div></div>
+    <div class="szb"     data-size="20" onclick="setSize(this)"><div class="szdot" style="width:20px;height:20px"></div></div>
+
+    <div class="tb-div"></div>
+    <span class="tb-label">Transparency</span>
+    <input class="opa-slider" type="range" min="10" max="100" value="100" id="opaSlider" oninput="setOpacity(this.value)">
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <div class="statusbar">
+    <span class="st-text">✏️ Use the pen or your finger to write</span>
+    <div class="live-pill"><div class="live-dot"></div>live</div>
+  </div>
+
+</div>
+
+<script>
+const socket = io();
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+
+let drawing = false, lastX = 0, lastY = 0;
+let currentColor = '#ffffff', currentSize = 2, currentOpacity = 1;
+
+// ── WELCOME / DRAW TRANSITION ──
+function startDrawing() {
+  document.getElementById('welcome').classList.add('out');
+  document.getElementById('drawing-ui').classList.add('in');
+  document.getElementById('bgDraw').classList.add('active');
+  document.getElementById('bgWelcome').classList.add('fade');
+  
+  // إبلاغ الخادم ببدء الجلسة
+  socket.emit('start_session'); 
+  
+  setTimeout(resizeCanvas, 100);
+}
+function showWelcome() {
+  document.getElementById('drawing-ui').classList.remove('in');
+  document.getElementById('welcome').classList.remove('out');
+  document.getElementById('bgDraw').classList.remove('active');
+  document.getElementById('bgWelcome').classList.remove('fade');
+}
+
+// ── CANVAS RESIZE ──
+function resizeCanvas() {
+  const wrap = canvas.parentElement;
+  const dpr  = window.devicePixelRatio || 1;
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  const snap = new Image();
+  const url  = canvas.toDataURL();
+  canvas.width  = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.scale(dpr, dpr);
+  snap.onload = () => ctx.drawImage(snap, 0, 0, w, h);
+  snap.src = url;
+}
+window.addEventListener('resize', resizeCanvas);
+
+// ── INPUT ──
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  let x, y, pressure = 0.5;
+  if (e.touches?.length > 0) {
+    const t = e.touches[0];
+    x = t.clientX - rect.left;
+    y = t.clientY - rect.top;
+    if (t.force > 0) pressure = t.force;
+  } else {
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
+  }
+  return { x, y, pressure };
+}
+
+function startDraw(e) {
+  e.preventDefault(); drawing = true;
+  const p = getPos(e); lastX = p.x; lastY = p.y;
+}
+function draw(e) {
+  e.preventDefault(); if (!drawing) return;
+  const p    = getPos(e);
+  const size = currentSize * (0.5 + p.pressure * 0.8);
+  ctx.globalAlpha = currentOpacity;
+  ctx.strokeStyle  = currentColor;
+  ctx.lineWidth    = size;
+  ctx.lineCap      = 'round';
+  ctx.lineJoin     = 'round';
+  ctx.beginPath();
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+  socket.emit('stroke', {
+    nx0: lastX / canvas.clientWidth,
+    ny0: lastY / canvas.clientHeight,
+    nx1: p.x   / canvas.clientWidth,
+    ny1: p.y   / canvas.clientHeight,
+    color: currentColor, size, opacity: currentOpacity,
+  });
+  lastX = p.x; lastY = p.y;
+}
+function stopDraw(e) { e.preventDefault(); drawing = false; }
+
+canvas.addEventListener('mousedown',  startDraw);
+canvas.addEventListener('mousemove',  draw);
+canvas.addEventListener('mouseup',    stopDraw);
+canvas.addEventListener('mouseleave', stopDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove',  draw,      { passive: false });
+canvas.addEventListener('touchend',   stopDraw,  { passive: false });
+
+// ── TOOLS ──
+function setColor(el) {
+  document.querySelectorAll('.swatch').forEach(s => s.classList.remove('on'));
+  el.classList.add('on'); currentColor = el.dataset.color;
+}
+function setSize(el) {
+  document.querySelectorAll('.szb').forEach(b => b.classList.remove('on'));
+  el.classList.add('on'); currentSize = parseInt(el.dataset.size);
+}
+function setOpacity(v) { currentOpacity = v / 100; }
+
+function clearCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+  socket.emit('clear');
+}
+
+// ── SAVE & RETURN ──
+function saveAndReturn() {
+  // Merge background color + drawing
+  const off = document.createElement('canvas');
+  off.width  = canvas.width;
+  off.height = canvas.height;
+  const oc = off.getContext('2d');
+  oc.fillStyle = '#0a0a14';
+  oc.fillRect(0, 0, off.width, off.height);
+  oc.drawImage(canvas, 0, 0);
+
+  const a = document.createElement('a');
+  const now = new Date();
+  a.download = `inkflow-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.png`;
+  a.href = off.toDataURL('image/png');
+  a.click();
+
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => {
+    toast.classList.remove('show');
+    clearCanvas();
+    showWelcome();
+	socket.emit('end_session'); // إرسال إشارة لصفحة العرض لتعود هي أيضاً
+  }, 2000);
+}
+
+// ── SOCKET ──
+socket.on('clear', () => {
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+});
+</script>
+</body>
+</html>
