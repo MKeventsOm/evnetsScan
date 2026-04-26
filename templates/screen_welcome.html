@@ -158,7 +158,6 @@
   <video
     id="welcome-video"
     preload="auto"
-    muted
     playsinline
     webkit-playsinline
   >
@@ -232,7 +231,7 @@ function playSequence() {
 
   // Reset video to start
   video.currentTime = 0;
-  video.muted = true;
+  video.muted = false;
 
   // Try to play
   const playPromise = video.play();
