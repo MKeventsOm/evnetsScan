@@ -3,6 +3,8 @@ from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'inkflow-v3-secret'
+
+# Changed async_mode to 'gevent' for better compatibility on Railway
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # ── PAGES ──────────────────────────────────────────────
@@ -39,9 +41,7 @@ def handle_clear(data=None):
 def handle_welcome_trigger():
     emit('welcome_trigger', broadcast=True, include_self=False)
 
-# ── DEV ONLY — remove this block in production ──────────
+# ── PRODUCTION/DEV EXECUTION ───────────────────────────
 if __name__ == '__main__':
-    print("\n" + "="*55)
-    print("  InkFlow v3 — Dev mode")
-    print("="*55)
-    socketio.run(app, debug=False, host='0.0.0.0', port=5000)
+    # Local dev still works with socketio.run
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
