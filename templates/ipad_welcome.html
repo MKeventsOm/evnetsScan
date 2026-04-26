@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>InkFlow — Welcome Controller</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Tajawal:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root { --accent:#c84b31; --gold:#d4a853; }
+
+    html, body {
+      width:100%; height:100%;
+      font-family:'Cinzel',serif;
+      overflow:hidden;
+      touch-action:none;
+      background:#08080f;
+    }
+
+    .bg {
+      position:fixed; inset:0; z-index:0;
+      background: url('/static/images/bg_ipad_welcome.png') center/cover no-repeat;
+    }
+    .bg::after { content:''; position:absolute; inset:0;  }
+
+    .shell {
+      position:fixed; inset:0; z-index:10;
+      display:flex; flex-direction:column;
+    }
+
+    /* TOP */
+    .topbar {
+      flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+      padding:12px 22px;
+      background:rgba(5,5,15,0.7); backdrop-filter:blur(16px);
+      border-bottom:1px solid rgba(255,255,255,0.07);
+    }
+    .back-btn {
+      display:flex; align-items:center; gap:7px; padding:8px 15px;
+      border-radius:8px; border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.55);
+      text-decoration:none; font-size:11px; letter-spacing:1.5px; transition:all .2s;
+    }
+    .back-btn:hover { color:white; border-color:rgba(255,255,255,0.3); }
+    .back-btn svg { width:13px; height:13px; }
+    .page-title { font-size:14px; letter-spacing:3px; color:rgba(255,255,255,0.6); }
+    .status-dot { display:flex; align-items:center; gap:7px; font-size:11px; color:darkgreen; letter-spacing:1px; font-family:'Tajawal',sans-serif; }
+    .sdot { width:7px; height:7px; border-radius:50%; background:darkgreen; box-shadow:0 0 10px darkgreen; animation:blink 1.2s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+    /* MAIN CONTENT */
+    .main {
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:40px;
+      padding:30px;
+    }
+
+    .label-top {
+      font-size:11px; letter-spacing:5px; color:rgba(255,255,255,0.3);
+      text-align:center;
+    }
+
+    /* BIG TRIGGER BUTTON */
+    .trigger-btn {
+   position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    width: 165px;
+    height: 165px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    background: rgb(107 54 154);
+    border: 2px solid rgb(107 54 154);
+    box-shadow: 0 0 60px rgba(212, 168, 83, 0.12), 0 0 120px rgba(212, 168, 83, 0.05);
+    transition: all 0.25s ease;
+    font-family: 'Cinzel', serif;
+    }
+    .trigger-btn::before {
+      content:''; position:absolute; inset:0; border-radius:50%;
+      background:rgba(255,255,255,0.03);
+      backdrop-filter:blur(20px);
+    }
+    .trigger-btn:active, .trigger-btn.pressed {
+      transform:scale(0.93);
+      background:rgba(212,168,83,0.18);
+      border-color:rgba(212,168,83,0.7);
+      box-shadow: 0 0 80px rgba(212,168,83,0.35);
+    }
+
+    /* Pulsing ring */
+    .trigger-btn::after {
+      content:''; position:absolute;
+      inset:-12px; border-radius:50%;
+      border:1px solid rgba(212,168,83,0.15);
+      animation:ring-pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes ring-pulse { 0%,100%{transform:scale(1);opacity:.5} 50%{transform:scale(1.04);opacity:1} }
+
+    .btn-icon-big {
+      position:relative; z-index:1;
+      width:80px; height:80px; border-radius:50%;
+      background:rgba(212,168,83,0.2);
+      display:flex; align-items:center; justify-content:center;
+      box-shadow:0 8px 30px rgba(212,168,83,0.25);
+    }
+    .btn-icon-big svg { width:40px; height:40px; color:#e8c060; }
+   .btn-sub-big { 
+    position: relative; 
+    z-index: 1; 
+    font-size: 40px; /* Reduced from 80px - 80px is likely too large for a sub-label */
+    color: #713e9e; 
+    font-family: 'Tajawal', sans-serif; 
+    text-align: center; 
+    max-width: 80%; 
+}
+    .btn-sub-big { position:relative; z-index:1; font-size:80px;  color:#713e9e; font-family:'Tajawal',sans-serif; }
+
+    /* State indicator */
+    .state-bar {
+      display:flex; align-items:center; gap:12px;
+      padding:12px 24px;
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.07);
+      border-radius:100px;
+      font-size:11px; letter-spacing:2px; color:rgba(255,255,255,0.35);
+      font-family:'Tajawal',sans-serif;
+      transition:all 0.3s;
+    }
+    .state-bar.active { color:darkgreen; border-color:rgba(74,222,128,0.2); background:rgba(74,222,128,0.05); }
+    .state-bar svg { width:14px; height:14px; }
+
+    /* Feedback toast */
+    .toast {
+      position:fixed; bottom:40px; left:50%; transform:translateX(-50%) translateY(10px);
+      background:rgba(212,168,83,0.95); color:#1a1000;
+      padding:12px 26px; border-radius:100px;
+      font-size:13px; font-weight:700; letter-spacing:1px;
+      font-family:'Cinzel',serif;
+      box-shadow:0 8px 28px rgba(212,168,83,0.4); z-index:999;
+      opacity:0; pointer-events:none; transition:all 0.3s ease;
+      display:flex; align-items:center; gap:9px; white-space:nowrap;
+    }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast svg { width:16px; height:16px; }
+  </style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  Sent to screen!
+</div>
+
+<div class="shell">
+  <div class="topbar">
+    <a href="/" class="back-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      رجوع
+    </a>
+    <span class="page-title"></span>
+    <div class="status-dot"><div class="sdot"></div>متصل</div>
+  </div>
+
+  <div class="main">
+    <div class="label-top"></div>
+      <div class="btn-sub-big"> بعنايتكم تفضلوا بتدشين مراسم الملتقى من خلال الضغط على الزر </div>
+    <button class="trigger-btn" id="triggerBtn" onclick="triggerWelcome()">
+    
+    
+    </button>
+
+    <div class="state-bar" id="stateBar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    بلمستكم، تنطلق رحلة الإبداع
+    </div>
+  </div>
+</div>
+
+<script>
+const socket = io();
+let busy = false;
+
+function triggerWelcome() {
+  if (busy) return;
+  busy = true;
+
+  const btn = document.getElementById('triggerBtn');
+  const bar = document.getElementById('stateBar');
+
+  btn.classList.add('pressed');
+  bar.classList.add('active');
+  bar.querySelector('svg').innerHTML = '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/>';
+  bar.lastChild.textContent = 'بلمستكم، تنطلق رحلة الإبداع';
+
+  socket.emit('welcome_trigger');
+
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+
+  setTimeout(() => {
+    btn.classList.remove('pressed');
+    bar.classList.remove('active');
+    bar.querySelector('svg').innerHTML = '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2" fill="none"/>';
+    busy = false;
+  }, 8000);
+}
+</script>
+</body>
+</html>

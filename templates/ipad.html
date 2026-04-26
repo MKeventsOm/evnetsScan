@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>InkFlow — Sign</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&family=Cinzel:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    :root { --accent:#c84b31; --gold:#d4a853; }
+
+    html, body {
+      width:100%; height:100%;
+      font-family:'Cinzel', serif;
+      overflow:hidden;
+      touch-action:none;
+      background:#0a0a16;
+    }
+
+    .bg {
+      position:fixed; inset:0; z-index:0;
+      background: url('/static/images/bg_ipad_sign.jpg') center/cover no-repeat;
+    }
+    .bg::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,0.4); }
+
+    /* SHELL */
+    .shell { position:fixed; inset:0; z-index:10; display:flex; flex-direction:column; }
+
+    /* TOP BAR */
+    .topbar {
+      flex-shrink:0;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 20px;
+      background:rgba(5,5,15,0.7);
+      backdrop-filter:blur(16px);
+      border-bottom:1px solid rgba(255,255,255,0.07);
+    }
+    .tb-left { display:flex; align-items:center; gap:10px; }
+    .back-btn {
+      display:flex; align-items:center; gap:6px;
+      padding:7px 14px; border-radius:8px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(255,255,255,0.05);
+      color:rgba(255,255,255,0.55);
+      text-decoration:none; font-size:12px;
+      font-family:'Cinzel',serif; letter-spacing:1px;
+      transition:all 0.2s; cursor:pointer;
+    }
+    .back-btn:hover { color:white; border-color:rgba(255,255,255,0.3); }
+    .back-btn svg { width:13px; height:13px; }
+
+    .page-title { font-size:15px; letter-spacing:3px; color:rgba(255,255,255,0.7); }
+
+    .tb-right { display:flex; gap:10px; }
+    .btn {
+      display:flex; align-items:center; gap:7px;
+      padding:8px 16px; border-radius:8px; border:none;
+      cursor:pointer; font-family:'Cinzel',serif;
+      font-size:12px; letter-spacing:1.5px; transition:all 0.2s;
+    }
+    .btn svg { width:14px; height:14px; }
+    .btn-clear {
+      background:rgba(255,255,255,0.06);
+      color:rgba(255,255,255,0.5);
+      border:1px solid rgba(255,255,255,0.1);
+    }
+    .btn-clear:hover { color:var(--accent); border-color:var(--accent); background:rgba(200,75,49,0.1); }
+    .btn-save {
+      background:linear-gradient(135deg,#16a34a,#15803d);
+      color:white;
+      box-shadow:0 4px 16px rgba(22,163,74,0.35);
+    }
+    .btn-save:active { transform:scale(0.96); }
+
+    /* TOOLBAR */
+    .toolbar {
+      flex-shrink:0;
+      display:flex; align-items:center; gap:8px;
+      padding:8px 20px;
+      background:rgba(5,5,15,0.58);
+      backdrop-filter:blur(12px);
+      border-bottom:1px solid rgba(255,255,255,0.05);
+      overflow-x:auto;
+    }
+    .toolbar::-webkit-scrollbar { display:none; }
+    .tb-lbl { font-size:9px; color:rgba(255,255,255,0.3); letter-spacing:2.5px; white-space:nowrap; font-family:'Tajawal',sans-serif; }
+    .tdiv { width:1px; height:22px; background:rgba(255,255,255,0.08); margin:0 5px; flex-shrink:0; }
+
+    .swatch {
+      width:26px; height:26px; border-radius:50%;
+      border:2px solid transparent; cursor:pointer;
+      transition:all 0.18s; flex-shrink:0;
+    }
+    .swatch.on { transform:scale(1.22); border-color:rgba(255,255,255,0.75); }
+
+    .szb {
+      display:flex; align-items:center; justify-content:center;
+      width:34px; height:34px; border-radius:8px;
+      border:1px solid rgba(255,255,255,0.1);
+      background:rgba(255,255,255,0.04);
+      cursor:pointer; transition:all 0.18s; flex-shrink:0;
+    }
+    .szb.on { background:rgba(255,255,255,0.14); border-color:rgba(255,255,255,0.35); }
+    .szdot { background:white; border-radius:50%; }
+
+    .opa { -webkit-appearance:none; width:76px; height:4px; border-radius:2px; background:rgba(255,255,255,0.14); outline:none; cursor:pointer; }
+    .opa::-webkit-slider-thumb { -webkit-appearance:none; width:13px; height:13px; border-radius:50%; background:white; box-shadow:0 0 5px rgba(0,0,0,0.3); }
+
+    /* CANVAS — HORIZONTAL signature area */
+    .canvas-area {
+      flex:1; display:flex; align-items:center; justify-content:center;
+      padding:20px 32px;
+      position:relative; overflow:hidden;
+    }
+
+    .sig-frame {
+      position:relative;
+      width:100%; max-width:1000px;
+      height:100%;
+      border-radius:6px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 16px 60px rgba(0,0,0,0.5);
+      overflow:hidden;
+    }
+
+    /* Paper background for signature */
+    .sig-frame::before {
+      content:''; position:absolute; inset:0;
+      background: #f4f0e6;
+      z-index:0;
+    }
+    /* Horizontal lines */
+    .sig-frame::after {
+      content:''; position:absolute; inset:0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 55px,
+        rgba(180,160,130,0.25) 55px, rgba(180,160,130,0.25) 56px
+      );
+      z-index:1; pointer-events:none;
+    }
+
+    /* Margin line */
+    .margin-line {
+      position:absolute; top:0; bottom:0; left:80px;
+      width:1px; background:rgba(200,80,60,0.35);
+      z-index:2; pointer-events:none;
+    }
+
+    /* Sign here text */
+    .sign-here {
+      position:absolute; bottom:18px; right:50%; transform:translateX(50%);
+      font-size:11px; letter-spacing:4px; color:rgba(150,130,100,0.5);
+      z-index:2; pointer-events:none; font-family:'Cinzel',serif;
+    }
+
+    #canvas {
+      position:relative; z-index:3;
+      display:block; width:100%; height:100%;
+      touch-action:none; cursor:crosshair;
+      background:transparent;
+    }
+
+    /* Status */
+    .statusbar {
+      flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
+      padding:7px 20px;
+      background:rgba(0,0,0,0.5); backdrop-filter:blur(10px);
+      border-top:1px solid rgba(255,255,255,0.04);
+    }
+    .st-text { font-size:10px; color:rgba(255,255,255,0.28); letter-spacing:1.5px; font-family:'Tajawal',sans-serif; }
+    .live-pill { display:flex; align-items:center; gap:6px; font-size:10px; color:#4ade80; letter-spacing:1px; font-family:'Tajawal',sans-serif; }
+    .live-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; box-shadow:0 0 8px #4ade80; animation:lp 1.5s ease-in-out infinite; }
+    @keyframes lp { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    /* Toast */
+    .toast {
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(14px);
+      background:rgba(22,163,74,0.96); color:white;
+      padding:12px 24px; border-radius:100px;
+      font-size:14px; font-weight:600; font-family:'Tajawal',sans-serif;
+      box-shadow:0 8px 28px rgba(0,0,0,0.3); z-index:999;
+      opacity:0; pointer-events:none; transition:all 0.3s ease;
+      display:flex; align-items:center; gap:8px; white-space:nowrap;
+    }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast svg { width:16px; height:16px; }
+  </style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+  Signature saved!
+</div>
+
+<div class="shell">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="tb-left">
+      <a href="/" class="back-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        BACK
+      </a>
+      <span class="page-title">SIGNATURE PAD</span>
+    </div>
+    <div class="tb-right">
+      <button class="btn btn-clear" onclick="clearCanvas()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6"/></svg>
+        CLEAR
+      </button>
+      <button class="btn btn-save" onclick="saveSignature()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        SAVE
+      </button>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar">
+    <span class="tb-lbl">COLOR</span>
+    <div class="swatch on"  style="background:#1a1020" data-color="#1a1020" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#1e3a6e" data-color="#1e3a6e" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#c84b31" data-color="#c84b31" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#166534" data-color="#166534" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#7c3aed" data-color="#7c3aed" onclick="setColor(this)"></div>
+    <div class="swatch"     style="background:#d4a853" data-color="#d4a853" onclick="setColor(this)"></div>
+
+    <div class="tdiv"></div>
+    <span class="tb-lbl">SIZE</span>
+    <div class="szb on"  data-size="2"  onclick="setSize(this)"><div class="szdot" style="width:3px;height:3px"></div></div>
+    <div class="szb"     data-size="4"  onclick="setSize(this)"><div class="szdot" style="width:6px;height:6px"></div></div>
+    <div class="szb"     data-size="8"  onclick="setSize(this)"><div class="szdot" style="width:10px;height:10px"></div></div>
+    <div class="szb"     data-size="16" onclick="setSize(this)"><div class="szdot" style="width:16px;height:16px"></div></div>
+
+    <div class="tdiv"></div>
+    <span class="tb-lbl">OPACITY</span>
+    <input class="opa" type="range" min="10" max="100" value="100" id="opaSlider" oninput="setOpacity(this.value)">
+  </div>
+
+  <!-- SIGNATURE CANVAS -->
+  <div class="canvas-area">
+    <div class="sig-frame">
+      <div class="margin-line"></div>
+      <div class="sign-here">SIGN HERE</div>
+      <canvas id="canvas"></canvas>
+    </div>
+  </div>
+
+  <div class="statusbar">
+    <span class="st-text">✏️ Use Apple Pencil or finger to sign</span>
+    <div class="live-pill"><div class="live-dot"></div>LIVE BROADCAST</div>
+  </div>
+
+</div>
+
+<script>
+const socket = io();
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+let drawing=false, lastX=0, lastY=0;
+let currentColor='#1a1020', currentSize=2, currentOpacity=1;
+
+function resizeCanvas() {
+  const frame = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const w = frame.clientWidth, h = frame.clientHeight;
+  const snap = new Image();
+  const url = canvas.toDataURL();
+  canvas.width=w*dpr; canvas.height=h*dpr;
+  canvas.style.width=w+'px'; canvas.style.height=h+'px';
+  ctx.scale(dpr,dpr);
+  snap.onload = () => ctx.drawImage(snap,0,0,w,h);
+  snap.src = url;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  let x,y,pressure=0.5;
+  if (e.touches?.length > 0) {
+    const t=e.touches[0];
+    x=t.clientX-rect.left; y=t.clientY-rect.top;
+    if(t.force>0) pressure=t.force;
+  } else { x=e.clientX-rect.left; y=e.clientY-rect.top; }
+  return {x,y,pressure};
+}
+
+function startDraw(e) {
+  e.preventDefault(); drawing=true;
+  const p=getPos(e); lastX=p.x; lastY=p.y;
+}
+function draw(e) {
+  e.preventDefault(); if(!drawing) return;
+  const p=getPos(e);
+  const size=currentSize*(0.4+p.pressure*0.9);
+  ctx.globalAlpha=currentOpacity;
+  ctx.strokeStyle=currentColor;
+  ctx.lineWidth=size; ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y); ctx.stroke();
+  socket.emit('stroke',{
+    nx0:lastX/canvas.clientWidth, ny0:lastY/canvas.clientHeight,
+    nx1:p.x/canvas.clientWidth,   ny1:p.y/canvas.clientHeight,
+    color:currentColor, size, opacity:currentOpacity, type:'sign'
+  });
+  lastX=p.x; lastY=p.y;
+}
+function stopDraw(e) { e.preventDefault(); drawing=false; }
+
+canvas.addEventListener('mousedown',startDraw);
+canvas.addEventListener('mousemove',draw);
+canvas.addEventListener('mouseup',stopDraw);
+canvas.addEventListener('mouseleave',stopDraw);
+canvas.addEventListener('touchstart',startDraw,{passive:false});
+canvas.addEventListener('touchmove',draw,{passive:false});
+canvas.addEventListener('touchend',stopDraw,{passive:false});
+
+function setColor(el) {
+  document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('on'));
+  el.classList.add('on'); currentColor=el.dataset.color;
+}
+function setSize(el) {
+  document.querySelectorAll('.szb').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on'); currentSize=parseInt(el.dataset.size);
+}
+function setOpacity(v) { currentOpacity=v/100; }
+
+function clearCanvas() {
+  const dpr=window.devicePixelRatio||1;
+  ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
+  socket.emit('clear',{type:'sign'});
+}
+
+function saveSignature() {
+  const off=document.createElement('canvas');
+  off.width=canvas.width; off.height=canvas.height;
+  const oc=off.getContext('2d');
+  oc.fillStyle='#f4f0e6'; oc.fillRect(0,0,off.width,off.height);
+  oc.drawImage(canvas,0,0);
+  const a=document.createElement('a');
+  const now=new Date();
+  a.download=`signature-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.png`;
+  a.href=off.toDataURL('image/png'); a.click();
+  const toast=document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'),2000);
+}
+
+socket.on('clear',d=>{ if(d?.type==='sign'){ const dpr=window.devicePixelRatio||1; ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr); } });
+</script>
+</body>
+</html>

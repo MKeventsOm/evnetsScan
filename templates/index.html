@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>InkFlow</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;700;900&family=Cinzel:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    html, body {
+      width:100%; height:100%;
+      font-family:'Cinzel', serif;
+      overflow:hidden;
+      background:#08080f;
+    }
+
+    .bg {
+      position:fixed; inset:0;
+      background: url('/static/images/bg_menu.png') center/cover no-repeat;
+      z-index:0;
+    }
+    .bg::after {
+      content:''; position:absolute; inset:0;
+    }
+
+    /* Center container */
+    .shell {
+      position:fixed; inset:0; z-index:10;
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column; gap:60px;
+    }
+
+    /* Logo */
+    .logo-area { text-align:center; }
+    .logo-line {
+      width:60px; height:2px;
+      background:linear-gradient(90deg,transparent,#d4a853,transparent);
+      margin:0 auto 20px;
+    }
+    .logo-title {
+         font-size: 62px;
+    font-weight: 700;
+    color: #6a369b;
+    letter-spacing: 8px;
+    text-shadow: 0 0 60px rgb(242 228 203);
+    }
+    .logo-sub {
+      font-size:13px; color:rgba(255,255,255,0.35);
+      letter-spacing:5px; margin-top:10px;
+      font-family:'Tajawal',sans-serif; font-weight:300;
+    }
+
+    /* Buttons row */
+    .buttons {
+      display:flex; gap:32px;
+      align-items:center;
+    }
+
+    .main-btn {
+      position:relative; overflow:hidden;
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      gap:16px;
+      width:260px; height:260px;
+      border-radius:24px;
+      border:none; cursor:pointer;
+      text-decoration:none;
+      transition:all 0.3s ease;
+      font-family:'Cinzel', serif;
+    }
+
+    /* SIGN button */
+    .btn-sign {
+      background: linear-gradient(145deg, rgba(200,75,49,0.15), rgba(200,75,49,0.05));
+      border:1px solid rgba(200,75,49,0.4);
+      box-shadow: 0 0 40px rgba(200,75,49,0.12), inset 0 1px 0 rgba(255,255,255,0.07);
+    }
+    .btn-sign:hover {
+      transform:translateY(-6px) scale(1.02);
+      border-color:rgba(200,75,49,0.7);
+      box-shadow: 0 20px 60px rgba(200,75,49,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .btn-sign:active { transform:scale(0.97); }
+
+    /* WELCOME button */
+    .btn-welcome {
+      background: linear-gradient(145deg, rgba(212,168,83,0.15), rgba(212,168,83,0.05));
+      border:1px solid rgba(212,168,83,0.4);
+      box-shadow: 0 0 40px rgba(212,168,83,0.12), inset 0 1px 0 rgba(255,255,255,0.07);
+    }
+    .btn-welcome:hover {
+      transform:translateY(-6px) scale(1.02);
+      border-color:rgba(212,168,83,0.7);
+      box-shadow: 0 20px 60px rgba(212,168,83,0.25), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .btn-welcome:active { transform:scale(0.97); }
+
+    /* Glassmorphism layer */
+    .main-btn::before {
+      content:'';
+      position:absolute; inset:0;
+      background:#673AB7;
+      backdrop-filter:blur(20px);
+      border-radius:24px;
+    }
+
+    .btn-icon {
+      position:relative; z-index:1;
+      width:72px; height:72px;
+      border-radius:18px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .btn-sign .btn-icon   { background:rgba(200,75,49,0.25); box-shadow:0 8px 24px rgba(200,75,49,0.3); }
+    .btn-welcome .btn-icon { background:rgba(212,168,83,0.22); box-shadow:0 8px 24px rgba(212,168,83,0.3); }
+    .btn-icon svg { width:36px; height:36px; }
+    .btn-sign .btn-icon svg    { color:#f97060; }
+    .btn-welcome .btn-icon svg { color:#e8c060; }
+
+    .btn-label {
+      position:relative; z-index:1;
+      font-size:22px; font-weight:600; letter-spacing:3px;
+      color:white;
+    }
+    .btn-sublabel {
+      position:relative; z-index:1;
+      font-size:11px; letter-spacing:2px;
+      color:rgba(255,255,255,0.35);
+      font-family:'Tajawal',sans-serif; font-weight:300;
+    }
+
+    /* Animated corner accents */
+    .btn-corner {
+      position:absolute; width:14px; height:14px;
+      border-color:inherit; border-style:solid;
+      opacity:0.5; transition:opacity 0.3s;
+    }
+    .main-btn:hover .btn-corner { opacity:1; }
+    .bc-tl { top:10px; right:10px; border-width:1px 0 0 1px; }
+    .bc-tr { top:10px; left:10px;  border-width:1px 1px 0 0; }
+    .bc-bl { bottom:10px; right:10px; border-width:0 0 1px 1px; }
+    .bc-br { bottom:10px; left:10px;  border-width:0 1px 1px 0; }
+
+    .btn-sign .btn-corner    { border-color:rgba(200,75,49,0.6); }
+    .btn-welcome .btn-corner { border-color:rgba(212,168,83,0.6); }
+
+    /* Bottom hint */
+    .hint {
+      position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+      font-size:11px; color:rgba(255,255,255,0.2);
+      letter-spacing:3px; font-family:'Tajawal',sans-serif;
+    }
+
+    /* Particle dots */
+    .particle {
+      position:fixed; border-radius:50%;
+      background:rgba(212,168,83,0.4);
+      animation:float linear infinite;
+      pointer-events:none; z-index:5;
+    }
+    @keyframes float {
+      0%   { transform:translateY(110vh) scale(0); opacity:0; }
+      10%  { opacity:1; }
+      90%  { opacity:1; }
+      100% { transform:translateY(-10vh) scale(1); opacity:0; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg"></div>
+
+<div class="shell">
+
+  <div class="logo-area">
+    <div class="logo-line"></div>
+    <div class="logo-title">مدرسه الجفنين للتعليم الاساسي (1-6)</div>
+    <div class="logo-sub">نظام الترحيب التفاعلي</div>
+  </div>
+
+  <div class="buttons">
+
+    <!-- SIGN button -->
+    <a href="/ipad" class="main-btn btn-sign">
+      <div class="btn-corner bc-tl"></div>
+      <div class="btn-corner bc-tr"></div>
+      <div class="btn-corner bc-bl"></div>
+      <div class="btn-corner bc-br"></div>
+      <div class="btn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
+        </svg>
+      </div>
+      <div class="btn-label">التوقيع التفاعلي</div>
+    </a>
+
+    <!-- WELCOME button -->
+    <a href="/ipad-welcome" class="main-btn btn-welcome">
+      <div class="btn-corner bc-tl"></div>
+      <div class="btn-corner bc-tr"></div>
+      <div class="btn-corner bc-bl"></div>
+      <div class="btn-corner bc-br"></div>
+      <div class="btn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </div>
+      <div class="btn-label">صفحة الترحيب</div>
+    </a>
+
+  </div>
+
+</div>
+
+<div class="hint">SELECT AN EXPERIENCE</div>
+
+<script>
+// Floating particles
+for (let i = 0; i < 18; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const s = Math.random() * 4 + 2;
+  p.style.cssText = `
+    width:${s}px; height:${s}px;
+    left:${Math.random()*100}vw;
+    animation-duration:${8+Math.random()*12}s;
+    animation-delay:${Math.random()*10}s;
+    opacity:0;
+    background:rgba(${Math.random()>0.5?'212,168,83':'200,75,49'},0.4);
+  `;
+  document.body.appendChild(p);
+}
+</script>
+</body>
+</html>
