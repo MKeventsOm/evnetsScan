@@ -4,7 +4,7 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'inkflow-v3-secret'
 
-# Use gevent for Railway compatibility
+# Initialize SocketIO with gevent for Railway
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # ── ROUTES ─────────────────────────────────────────────
@@ -42,4 +42,5 @@ def handle_welcome_trigger():
     emit('welcome_trigger', broadcast=True, include_self=False)
 
 if __name__ == '__main__':
+    # Local fallback
     socketio.run(app, host='0.0.0.0', port=5000)
