@@ -1,338 +1,45 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>InkFlow — Welcome Screen</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Tajawal:wght@300;400&display=swap" rel="stylesheet">
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    html, body { width:100%; height:100%; overflow:hidden; background:#000; font-family:'Cinzel',serif; }
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit
 
-    /* ── STEP 1: IDLE = صورة ثابتة ── */
-    #idle {
-      position:fixed; inset:0; z-index:10;
-      display:flex; align-items:center; justify-content:center; flex-direction:column;
-      transition:opacity 0.8s ease;
-      background:#111; /* fallback لو الصورة ما حملت */
-    }
+app = Flask(__name__)
+app.config['SECRET_KEY'] = 'inkflow-v3-secret'
 
-    /* الصورة كـ img tag بدل background-image عشان نضمن تحميلها */
-    #idle-bg {
-      position:absolute; inset:0; z-index:0;
-      width:100%; height:100%;
-      object-fit:cover;
-      filter:brightness(0.55) saturate(1.1);
-    }
+# Use gevent for Railway compatibility
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-    #idle::after {
-      content:''; position:absolute; inset:0; z-index:1;
-      background:rgba(0,0,0,0.35);
-    }
+# ── ROUTES ─────────────────────────────────────────────
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-    .idle-content { position:relative; z-index:2; text-align:center; }
-    .idle-logo { font-size:72px; font-weight:700; color:white; letter-spacing:10px; opacity:.25; }
-    .idle-sub { font-size:13px; letter-spacing:5px; color:rgba(255,255,255,0.3); margin-top:12px; font-family:'Tajawal',sans-serif; }
-    .idle-pulse {
-      width:80px; height:80px; border-radius:50%;
-      border:1px solid rgba(212,168,83,0.3);
-      margin:30px auto 0; position:relative;
-      animation:ip 2.5s ease-in-out infinite;
-    }
-    .idle-pulse::after {
-      content:''; position:absolute; inset:10px; border-radius:50%;
-      border:1px solid rgba(212,168,83,0.15);
-      animation:ip 2.5s ease-in-out infinite .5s;
-    }
-    @keyframes ip { 0%,100%{transform:scale(1);opacity:.5} 50%{transform:scale(1.1);opacity:1} }
-    #idle.hidden { opacity:0; pointer-events:none; }
+@app.route('/ipad')
+def ipad():
+    return render_template('ipad.html')
 
-    /* ── STEP 2: VIDEO ── */
-    #video-wrap {
-      position:fixed; inset:0; z-index:20;
-      background:#000;
-      opacity:0; pointer-events:none;
-      transition:opacity 0.8s ease;
-    }
-    #video-wrap.show { opacity:1; pointer-events:all; }
+@app.route('/screen')
+def screen_sign():
+    return render_template('screen_sign.html')
 
-    #welcome-video {
-      position:absolute; inset:0;
-      width:100%; height:100%;
-      object-fit:cover;
-      display:block;
-    }
+@app.route('/ipad-welcome')
+def ipad_welcome():
+    return render_template('ipad_welcome.html')
 
-    .video-overlay {
-      position:absolute; inset:0; z-index:2;
-      display:flex; flex-direction:column; align-items:center; justify-content:center;
-      background:linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 40%, transparent 60%, rgba(0,0,0,0.4) 100%);
-      pointer-events:none;
-    }
-    .vo-welcome {
-      font-size:100px; font-weight:900; letter-spacing:16px; color:white;
-      text-shadow:0 0 80px rgba(212,168,83,0.6), 0 4px 30px rgba(0,0,0,0.8);
-      opacity:0; transform:translateY(30px); transition:all 1s ease .5s;
-    }
-    .vo-welcome.show { opacity:1; transform:translateY(0); }
-    .vo-sub {
-      font-size:18px; letter-spacing:8px; color:rgba(255,255,255,0.7);
-      margin-top:16px; font-family:'Tajawal',sans-serif; font-weight:300;
-      opacity:0; transition:all 1s ease 1.2s;
-    }
-    .vo-sub.show { opacity:1; }
+@app.route('/screen-welcome')
+def screen_welcome():
+    return render_template('screen_welcome.html')
 
-    #video-error {
-      position:absolute; z-index:3;
-      color:rgba(255,80,80,0.9); font-size:13px; letter-spacing:2px;
-      font-family:'Tajawal',sans-serif; text-align:center;
-      display:none;
-    }
+# ── SOCKET EVENTS ───────────────────────────────────────
+@socketio.on('stroke')
+def handle_stroke(data):
+    emit('stroke', data, broadcast=True, include_self=False)
 
-    /* ── STEP 3: PHOTO + CARD ── */
-    #photo-final {
-      position:fixed; inset:0; z-index:30;
-      opacity:0; pointer-events:none;
-      transition:opacity 1s ease;
-    }
-    #photo-final.show { opacity:1; pointer-events:all; }
-    #photo-final-bg {
-      position:absolute; inset:0;
-      width:100%; height:100%;
-      object-fit:cover;
-      filter:brightness(0.85) saturate(1.1);
-    }
-    .photo-overlay {
-      position:absolute; inset:0;
-      background:linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.6) 100%);
-      display:flex; align-items:center; justify-content:center;
-    }
-    .po-card {
-      background:rgba(255,255,255,0.06); backdrop-filter:blur(30px);
-      border:1px solid rgba(255,255,255,0.12); border-radius:24px;
-      padding:50px 80px; text-align:center;
-      box-shadow:0 40px 100px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
-      opacity:0; transform:scale(0.9) translateY(20px);
-      transition:all 0.8s ease 0.3s;
-    }
-    #photo-final.show .po-card { opacity:1; transform:scale(1) translateY(0); }
-    .po-divider { width:60px; height:2px; background:linear-gradient(90deg,transparent,#d4a853,transparent); margin:0 auto 28px; }
-    .po-title { font-size:72px; font-weight:700; letter-spacing:10px; color:white; text-shadow:0 0 40px rgba(212,168,83,0.4); }
-    .po-sub { font-size:16px; letter-spacing:5px; color:rgba(255,255,255,0.5); margin-top:14px; font-family:'Tajawal',sans-serif; }
+@socketio.on('clear')
+def handle_clear(data=None):
+    emit('clear', data or {}, broadcast=True, include_self=False)
 
-    /* Confetti */
-    .confetti-piece {
-      position:fixed; top:-10px; border-radius:2px;
-      animation:fall linear forwards; pointer-events:none; z-index:40;
-    }
-    @keyframes fall {
-      0%   { transform:translateY(-10px) rotate(0deg); opacity:1; }
-      100% { transform:translateY(110vh) rotate(720deg); opacity:0; }
-    }
+@socketio.on('welcome_trigger')
+def handle_welcome_trigger():
+    emit('welcome_trigger', broadcast=True, include_self=False)
 
-    /* Return button */
-    .return-btn {
-      position:fixed; bottom:30px; right:30px; z-index:50;
-      display:flex; align-items:center; gap:8px;
-      padding:12px 20px; border-radius:10px;
-      border:1px solid rgba(255,255,255,0.15);
-      background:rgba(0,0,0,0.5); backdrop-filter:blur(12px);
-      color:rgba(255,255,255,0.4); font-size:11px; letter-spacing:2px;
-      text-decoration:none; transition:all .2s;
-      opacity:0; pointer-events:none;
-    }
-    .return-btn.show { opacity:1; pointer-events:all; }
-    .return-btn:hover { color:white; border-color:rgba(255,255,255,0.3); }
-    .return-btn svg { width:13px; height:13px; }
-
-    /* Top status bar */
-    .top-status {
-      position:fixed; top:0; left:0; right:0; z-index:100;
-      display:flex; align-items:center; justify-content:space-between;
-      padding:10px 20px;
-      background:rgba(0,0,0,0.4); backdrop-filter:blur(10px);
-      border-bottom:1px solid rgba(255,255,255,0.05);
-    }
-    .ts-brand { font-size:14px; letter-spacing:3px; color:rgba(255,255,255,0.4); }
-    .ts-live { display:flex; align-items:center; gap:6px; font-size:10px; color:#4ade80; letter-spacing:2px; font-family:'Tajawal',sans-serif; }
-    .ts-dot { width:6px; height:6px; border-radius:50%; background:#4ade80; box-shadow:0 0 8px #4ade80; animation:blink 1.2s infinite; }
-    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
-    .ts-home { display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:7px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.4); text-decoration:none; font-size:11px; letter-spacing:1.5px; transition:all .2s; }
-    .ts-home:hover { color:white; border-color:rgba(255,255,255,0.3); }
-    .ts-home svg { width:12px; height:12px; }
-  </style>
-</head>
-<body>
-
-<div class="top-status">
-  <div class="ts-brand">InkFlow</div>
-  <div class="ts-live" id="statusLive"><div class="ts-dot"></div>WAITING FOR TRIGGER</div>
-  <a href="/" class="ts-home">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    HOME
-  </a>
-</div>
-
-<!-- STEP 1: صورة ثابتة = img tag عشان نضمن التحميل -->
-<div id="idle">
-  <img id="idle-bg" src="/static/images/welcome_photo.jpg"
-       alt=""
-       onerror="this.style.display='none'; document.getElementById('idle').style.background='linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)'">
-  <div class="idle-content">
-    <div class="idle-logo">InkFlow</div>
-    <div class="idle-sub">WAITING FOR WELCOME TRIGGER</div>
-    <div class="idle-pulse"></div>
-  </div>
-</div>
-
-<!-- STEP 2: فيديو بعد الضغط من الصفحة الثانية -->
-<div id="video-wrap">
-  <video id="welcome-video" preload="auto" muted playsinline webkit-playsinline>
-    <source src="/static/videos/welcome.mp4" type="video/mp4">
-    <source src="/static/videos/welcome.webm" type="video/webm">
-  </video>
-  <div class="video-overlay">
-    <div class="vo-welcome" id="voWelcome">WELCOME</div>
-    <div class="vo-sub" id="voSub">THANK YOU FOR JOINING US</div>
-  </div>
-  <div id="video-error">
-    ⚠ VIDEO NOT FOUND<br>
-    <span id="video-src-display" style="opacity:.5; font-size:11px; font-family:'Tajawal',sans-serif;"></span>
-  </div>
-</div>
-
-<!-- STEP 3: صورة مع كارد بعد الفيديو -->
-<div id="photo-final">
-  <img id="photo-final-bg" src="/static/images/welcome_photo.jpg" alt="Welcome"
-       onerror="this.style.display='none'">
-  <div class="photo-overlay">
-    <div class="po-card">
-      <div class="po-divider"></div>
-      <div class="po-title">WELCOME</div>
-      <div class="po-sub">THANK YOU FOR JOINING US</div>
-    </div>
-  </div>
-</div>
-
-<a href="/" class="return-btn" id="returnBtn">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-  RETURN HOME
-</a>
-
-<script>
-const socket = io();
-const statusLive = document.getElementById('statusLive');
-let sequence_running = false;
-
-function setStatus(msg) {
-  statusLive.innerHTML = `<div class="ts-dot"></div>${msg}`;
-}
-
-// ── Video debug ──
-const videoEl = document.getElementById('welcome-video');
-
-videoEl.addEventListener('canplaythrough', () => {
-  console.log('✅ Video ready:', videoEl.currentSrc);
-});
-
-videoEl.addEventListener('error', () => {
-  console.error('❌ Video error:', videoEl.error?.message);
-  document.getElementById('video-error').style.display = 'block';
-  document.getElementById('video-src-display').textContent = videoEl.currentSrc || '/static/videos/welcome.mp4';
-});
-
-// ── Image debug ──
-document.getElementById('idle-bg').addEventListener('load',  () => console.log('✅ Idle image loaded'));
-document.getElementById('idle-bg').addEventListener('error', () => console.warn('❌ Idle image failed — using gradient fallback'));
-
-// ── Socket trigger ──
-socket.on('welcome_trigger', () => {
-  if (sequence_running) return;
-  sequence_running = true;
-  playSequence();
-});
-
-function playSequence() {
-  const idle       = document.getElementById('idle');
-  const videoWrap  = document.getElementById('video-wrap');
-  const video      = document.getElementById('welcome-video');
-  const photoFinal = document.getElementById('photo-final');
-  const returnBtn  = document.getElementById('returnBtn');
-
-  setStatus('LOADING VIDEO...');
-  idle.classList.add('hidden');
-  videoWrap.classList.add('show');
-
-  video.currentTime = 0;
-  video.muted = true;
-
-  const playPromise = video.play();
-
-  if (playPromise !== undefined) {
-    playPromise
-      .then(() => {
-        setStatus('PLAYING VIDEO');
-        setTimeout(() => {
-          document.getElementById('voWelcome').classList.add('show');
-          document.getElementById('voSub').classList.add('show');
-        }, 500);
-      })
-      .catch((err) => {
-        console.error('▶ Play failed:', err);
-        setStatus('VIDEO ERROR — SKIPPING');
-        setTimeout(() => showFinalPhoto(photoFinal, returnBtn), 2000);
-      });
-  }
-
-  video.onended = () => {
-    videoWrap.style.transition = 'opacity 1.2s ease';
-    videoWrap.style.opacity = '0';
-    setTimeout(() => {
-      videoWrap.classList.remove('show');
-      videoWrap.style.opacity = '';
-      videoWrap.style.transition = '';
-      document.getElementById('voWelcome').classList.remove('show');
-      document.getElementById('voSub').classList.remove('show');
-      showFinalPhoto(photoFinal, returnBtn);
-    }, 1200);
-  };
-}
-
-function showFinalPhoto(photoFinal, returnBtn) {
-  photoFinal.classList.add('show');
-  setStatus('WELCOME COMPLETED');
-  launchConfetti();
-  setTimeout(() => returnBtn.classList.add('show'), 1500);
-}
-
-function launchConfetti() {
-  const colors = ['#d4a853','#c84b31','#ffffff','#4ade80','#60a5fa','#f472b6'];
-  for (let i = 0; i < 80; i++) {
-    const c = document.createElement('div');
-    c.className = 'confetti-piece';
-    const size = Math.random() * 10 + 6;
-    c.style.cssText = `
-      width:${size}px; height:${size*(Math.random()+0.5)}px;
-      left:${Math.random()*100}vw;
-      background:${colors[Math.floor(Math.random()*colors.length)]};
-      animation-duration:${3+Math.random()*4}s;
-      animation-delay:${Math.random()*2}s;
-      border-radius:${Math.random()>0.5?'50%':'2px'};
-    `;
-    document.body.appendChild(c);
-    c.addEventListener('animationend', () => c.remove());
-  }
-}
-
-document.getElementById('returnBtn').addEventListener('click', (e) => {
-  e.preventDefault();
-  document.getElementById('photo-final').classList.remove('show');
-  document.getElementById('returnBtn').classList.remove('show');
-  document.getElementById('idle').classList.remove('hidden');
-  setStatus('WAITING FOR TRIGGER');
-  sequence_running = false;
-});
-</script>
-</body>
-</html>
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000)
