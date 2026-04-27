@@ -17,11 +17,12 @@
 
     .bg {
       position:fixed; inset:0;
-      background: url('/static/images/bg_menu.png') center/cover no-repeat;
+      background: url('/static/images/bg_menu.jpg') center/cover no-repeat;
       z-index:0;
     }
     .bg::after {
       content:''; position:absolute; inset:0;
+      background: rgba(0,0,0,0.52);
     }
 
     /* Center container */
@@ -39,11 +40,9 @@
       margin:0 auto 20px;
     }
     .logo-title {
-         font-size: 62px;
-    font-weight: 700;
-    color: #6a369b;
-    letter-spacing: 8px;
-    text-shadow: 0 0 60px rgb(242 228 203);
+      font-size:62px; font-weight:700;
+      color:white; letter-spacing:8px;
+      text-shadow: 0 0 60px rgba(212,168,83,0.4);
     }
     .logo-sub {
       font-size:13px; color:rgba(255,255,255,0.35);
@@ -100,7 +99,7 @@
     .main-btn::before {
       content:'';
       position:absolute; inset:0;
-      background:#673AB7;
+      background:rgba(255,255,255,0.03);
       backdrop-filter:blur(20px);
       border-radius:24px;
     }
@@ -174,8 +173,8 @@
 
   <div class="logo-area">
     <div class="logo-line"></div>
-    <div class="logo-title">مدرسه الجفنين للتعليم الاساسي (1-6)</div>
-    <div class="logo-sub">نظام الترحيب التفاعلي</div>
+    <div class="logo-title">InkFlow</div>
+    <div class="logo-sub">INTERACTIVE EXPERIENCE</div>
   </div>
 
   <div class="buttons">
@@ -191,7 +190,8 @@
           <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
         </svg>
       </div>
-      <div class="btn-label">التوقيع التفاعلي</div>
+      <div class="btn-label">SIGN</div>
+      <div class="btn-sublabel">التوقيع التفاعلي</div>
     </a>
 
     <!-- WELCOME button -->
@@ -205,7 +205,8 @@
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
         </svg>
       </div>
-      <div class="btn-label">صفحة الترحيب</div>
+      <div class="btn-label">WELCOME</div>
+      <div class="btn-sublabel">صفحة الترحيب</div>
     </a>
 
   </div>

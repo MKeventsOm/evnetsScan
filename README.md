@@ -1,45 +1,30 @@
-# InkFlow v3
+# InkFlow — لوحة الكتابة التفاعلية
 
-## Project Structure
+## هيكل المشروع
 ```
-inkflow_v3/
-├── app.py
-├── requirements.txt
+inkflow/
+├── app.py                    ← السيرفر الرئيسي
+├── requirements.txt          ← المكتبات المطلوبة
 ├── templates/
-│   ├── index.html           ← Main menu (Sign + Welcome buttons)
-│   ├── ipad.html            ← iPad: horizontal signature pad
-│   ├── screen_sign.html     ← Screen: live signature display
-│   ├── ipad_welcome.html    ← iPad: welcome trigger button
-│   └── screen_welcome.html  ← Screen: video → photo sequence
+│   ├── draw.html             ← صفحة الكتابة (الآيباد)
+│   └── view.html             ← صفحة العرض (الشاشة)
 └── static/
-    ├── images/
-    │   ├── bg_menu.jpg
-    │   ├── bg_sign.jpg
-    │   ├── bg_welcome.jpg
-    │   ├── bg_ipad_sign.jpg
-    │   ├── bg_ipad_welcome.jpg
-    │   └── welcome_photo.jpg
-    └── videos/
-        └── welcome.mp4
+    └── images/
+        ├── bg_welcome.jpg    ← خلفية شاشة الترحيب
+        ├── bg_draw.jpg       ← خلفية لوحة الكتابة
+        └── bg_view.jpg       ← خلفية شاشة العرض
 ```
 
-## Install & Run
-```bash
+## التثبيت
+```
 pip install flask flask-socketio
+```
+
+## التشغيل
+```
 python app.py
 ```
 
-## URL Guide
-
-| Device  | Mode    | URL                              |
-|---------|---------|----------------------------------|
-| Browser | Menu    | http://[IP]:5000                 |
-| iPad    | Sign    | http://[IP]:5000/ipad            |
-| Screen  | Sign    | http://[IP]:5000/screen          |
-| iPad    | Welcome | http://[IP]:5000/ipad-welcome    |
-| Screen  | Welcome | http://[IP]:5000/screen-welcome  |
-
-## How It Works
-1. Open main menu → choose Sign or Welcome Page
-2. **Sign mode**: iPad draws → screen shows live
-3. **Welcome mode**: iPad presses button → screen plays video → shows photo + confetti
+## الاستخدام
+- **الآيباد**: افتح http://[IP]:5000
+- **الشاشة**: افتح http://[IP]:5000/view

@@ -20,9 +20,9 @@
 
     .bg {
       position:fixed; inset:0; z-index:0;
-      background: url('/static/images/bg_ipad_welcome.png') center/cover no-repeat;
+      background: url('/static/images/bg_ipad_welcome.jpg') center/cover no-repeat;
     }
-    .bg::after { content:''; position:absolute; inset:0;  }
+    .bg::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,0.5); }
 
     .shell {
       position:fixed; inset:0; z-index:10;
@@ -45,8 +45,8 @@
     .back-btn:hover { color:white; border-color:rgba(255,255,255,0.3); }
     .back-btn svg { width:13px; height:13px; }
     .page-title { font-size:14px; letter-spacing:3px; color:rgba(255,255,255,0.6); }
-    .status-dot { display:flex; align-items:center; gap:7px; font-size:11px; color:darkgreen; letter-spacing:1px; font-family:'Tajawal',sans-serif; }
-    .sdot { width:7px; height:7px; border-radius:50%; background:darkgreen; box-shadow:0 0 10px darkgreen; animation:blink 1.2s infinite; }
+    .status-dot { display:flex; align-items:center; gap:7px; font-size:11px; color:#4ade80; letter-spacing:1px; font-family:'Tajawal',sans-serif; }
+    .sdot { width:7px; height:7px; border-radius:50%; background:#4ade80; box-shadow:0 0 10px #4ade80; animation:blink 1.2s infinite; }
     @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
 
     /* MAIN CONTENT */
@@ -62,23 +62,15 @@
 
     /* BIG TRIGGER BUTTON */
     .trigger-btn {
-   position: relative;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 18px;
-    width: 165px;
-    height: 165px;
-    border-radius: 50%;
-    border: none;
-    cursor: pointer;
-    background: rgb(107 54 154);
-    border: 2px solid rgb(107 54 154);
-    box-shadow: 0 0 60px rgba(212, 168, 83, 0.12), 0 0 120px rgba(212, 168, 83, 0.05);
-    transition: all 0.25s ease;
-    font-family: 'Cinzel', serif;
+      position:relative; overflow:hidden;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+      width:300px; height:300px; border-radius:50%;
+      border:none; cursor:pointer;
+      background:rgba(212,168,83,0.08);
+      border:2px solid rgba(212,168,83,0.35);
+      box-shadow: 0 0 60px rgba(212,168,83,0.12), 0 0 120px rgba(212,168,83,0.05);
+      transition:all 0.25s ease;
+      font-family:'Cinzel',serif;
     }
     .trigger-btn::before {
       content:''; position:absolute; inset:0; border-radius:50%;
@@ -109,16 +101,8 @@
       box-shadow:0 8px 30px rgba(212,168,83,0.25);
     }
     .btn-icon-big svg { width:40px; height:40px; color:#e8c060; }
-   .btn-sub-big { 
-    position: relative; 
-    z-index: 1; 
-    font-size: 40px; /* Reduced from 80px - 80px is likely too large for a sub-label */
-    color: #713e9e; 
-    font-family: 'Tajawal', sans-serif; 
-    text-align: center; 
-    max-width: 80%; 
-}
-    .btn-sub-big { position:relative; z-index:1; font-size:80px;  color:#713e9e; font-family:'Tajawal',sans-serif; }
+    .btn-label-big { position:relative; z-index:1; font-size:20px; letter-spacing:4px; color:white; }
+    .btn-sub-big { position:relative; z-index:1; font-size:11px; letter-spacing:2px; color:rgba(255,255,255,0.35); font-family:'Tajawal',sans-serif; }
 
     /* State indicator */
     .state-bar {
@@ -131,7 +115,7 @@
       font-family:'Tajawal',sans-serif;
       transition:all 0.3s;
     }
-    .state-bar.active { color:darkgreen; border-color:rgba(74,222,128,0.2); background:rgba(74,222,128,0.05); }
+    .state-bar.active { color:#4ade80; border-color:rgba(74,222,128,0.2); background:rgba(74,222,128,0.05); }
     .state-bar svg { width:14px; height:14px; }
 
     /* Feedback toast */
@@ -162,23 +146,28 @@
   <div class="topbar">
     <a href="/" class="back-btn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-      رجوع
+      BACK
     </a>
-    <span class="page-title"></span>
-    <div class="status-dot"><div class="sdot"></div>متصل</div>
+    <span class="page-title">WELCOME CONTROLLER</span>
+    <div class="status-dot"><div class="sdot"></div>CONNECTED</div>
   </div>
 
   <div class="main">
-    <div class="label-top"></div>
-      <div class="btn-sub-big"> بعنايتكم تفضلوا بتدشين مراسم الملتقى من خلال الضغط على الزر </div>
+    <div class="label-top">TAP TO TRIGGER THE SCREEN</div>
+
     <button class="trigger-btn" id="triggerBtn" onclick="triggerWelcome()">
-    
-    
+      <div class="btn-icon-big">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+      </div>
+      <div class="btn-label-big">WELCOME</div>
+      <div class="btn-sub-big">Play on Screen</div>
     </button>
 
     <div class="state-bar" id="stateBar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-    بلمستكم، تنطلق رحلة الإبداع
+      READY TO BROADCAST
     </div>
   </div>
 </div>
@@ -197,7 +186,7 @@ function triggerWelcome() {
   btn.classList.add('pressed');
   bar.classList.add('active');
   bar.querySelector('svg').innerHTML = '<polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2" fill="none"/>';
-  bar.lastChild.textContent = 'بلمستكم، تنطلق رحلة الإبداع';
+  bar.lastChild.textContent = 'BROADCASTING...';
 
   socket.emit('welcome_trigger');
 
@@ -209,6 +198,7 @@ function triggerWelcome() {
     btn.classList.remove('pressed');
     bar.classList.remove('active');
     bar.querySelector('svg').innerHTML = '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="2" fill="none"/>';
+    bar.lastChild.textContent = 'READY TO BROADCAST';
     busy = false;
   }, 8000);
 }
