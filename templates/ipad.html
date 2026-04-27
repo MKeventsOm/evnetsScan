@@ -257,7 +257,11 @@
 </div>
 
 <script>
-const socket = io();
+const socket = io({
+    transports: ['websocket', 'polling'],
+    upgrade: true,
+    rememberUpgrade: true
+});
 const canvas = document.getElementById('canvas');
 const ctx    = canvas.getContext('2d');
 let drawing=false, lastX=0, lastY=0;

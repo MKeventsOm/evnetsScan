@@ -1,3 +1,5 @@
+import eventlet
+eventlet.monkey_patch() # This must stay at the absolute top
 import os
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
@@ -6,8 +8,13 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'inkflow-v3-secret')
 
 # Make sure it's eventlet here
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
-# -- PAGES --
+socketio = SocketIO(
+    app, 
+    cors_allowed_origins="*", 
+    async_mode='eventlet',
+    engineio_logger=False, # Set to True if you need to see logs in Railway
+    always_connect=True
+)# -- PAGES --
 @app.route('/')
 def index():
     return render_template('index.html')
