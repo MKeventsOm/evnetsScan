@@ -185,42 +185,64 @@
 </div>
 
 <script>
-const socket = io();
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-let sc=0, wt=null;
-
-function resize() {
-  const f=canvas.parentElement, dpr=window.devicePixelRatio||1;
-  const w=f.clientWidth, h=f.clientHeight;
-  canvas.width=w*dpr; canvas.height=h*dpr;
-  canvas.style.width=w+'px'; canvas.style.height=h+'px';
-  ctx.scale(dpr,dpr);
-}
-window.addEventListener('resize',resize); resize();
-
-function showW() {
-  const b=document.getElementById('wb'); b.classList.add('show');
-  clearTimeout(wt); wt=setTimeout(()=>b.classList.remove('show'),1500);
-}
-
-socket.on('stroke',d=>{
-  if(d.type!=='sign') return;
-  const w=canvas.clientWidth,h=canvas.clientHeight;
-  ctx.globalAlpha=d.opacity; ctx.strokeStyle=d.color;
-  ctx.lineWidth=d.size; ctx.lineCap=ctx.lineJoin='round';
-  ctx.beginPath(); ctx.moveTo(d.nx0*w,d.ny0*h); ctx.lineTo(d.nx1*w,d.ny1*h); ctx.stroke();
-  sc++; document.getElementById('strokeCount').textContent=sc;
-  showW();
+const socket = io({
+    transports: ["websocket", "polling"], // Force websocket but allow polling
+    upgrade: true
 });
 
-socket.on('clear',d=>{
-  if(d?.type!=='sign') return;
-  const dpr=window.devicePixelRatio||1;
-  ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);
-  sc=0; document.getElementById('strokeCount').textContent='0';
-  const f=document.getElementById('clearFlash');
-  f.classList.remove('flash'); void f.offsetWidth; f.classList.add('flash');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let sc = 0;
+let wt = null;
+
+// Scale fix for high-resolution screens (iPads/4K displays)
+function resize() {
+    const f = canvas.parentElement;
+    const dpr = window.devicePixelRatio || 1;
+    const w = f.clientWidth;
+    const h = f.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
+    ctx.scale(dpr, dpr);
+}
+window.addEventListener('resize', resize);
+resize();
+
+socket.on('stroke', d => {
+    if (d.type !== 'sign') return;
+    
+    // Get current dimensions of THIS screen
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+
+    ctx.globalAlpha = d.opacity;
+    ctx.strokeStyle = d.color;
+    ctx.lineWidth = d.size;
+    ctx.lineCap = ctx.lineJoin = 'round';
+
+    ctx.beginPath();
+    // Map normalized 0-1 coordinates back to this specific screen's pixels
+    ctx.moveTo(d.nx0 * w, d.ny0 * h);
+    ctx.lineTo(d.nx1 * w, d.ny1 * h);
+    ctx.stroke();
+
+    sc++;
+    document.getElementById('strokeCount').textContent = sc;
+    showW();
+});
+
+socket.on('clear', d => {
+    if (d?.type !== 'sign') return;
+    const dpr = window.devicePixelRatio || 1;
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+    sc = 0;
+    document.getElementById('strokeCount').textContent = '0';
+    const f = document.getElementById('clearFlash');
+    f.classList.remove('flash');
+    void f.offsetWidth; 
+    f.classList.add('flash');
 });
 </script>
 </body>

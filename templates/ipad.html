@@ -294,19 +294,37 @@ function startDraw(e) {
   const p=getPos(e); lastX=p.x; lastY=p.y;
 }
 function draw(e) {
-  e.preventDefault(); if(!drawing) return;
-  const p=getPos(e);
-  const size=currentSize*(0.4+p.pressure*0.9);
-  ctx.globalAlpha=currentOpacity;
-  ctx.strokeStyle=currentColor;
-  ctx.lineWidth=size; ctx.lineCap='round'; ctx.lineJoin='round';
-  ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y); ctx.stroke();
-  socket.emit('stroke',{
-    nx0:lastX/canvas.clientWidth, ny0:lastY/canvas.clientHeight,
-    nx1:p.x/canvas.clientWidth,   ny1:p.y/canvas.clientHeight,
-    color:currentColor, size, opacity:currentOpacity, type:'sign'
-  });
-  lastX=p.x; lastY=p.y;
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    
+    // 1. Draw locally on iPad
+    const size = currentSize * (0.4 + p.pressure * 0.9);
+    ctx.globalAlpha = currentOpacity;
+    ctx.strokeStyle = currentColor;
+    ctx.lineWidth = size;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+
+    // 2. SEND TO SERVER (Normalized)
+    // We divide by clientWidth/Height so it's a percentage (0.0 to 1.0)
+    socket.emit('stroke', {
+        nx0: lastX / canvas.clientWidth,
+        ny0: lastY / canvas.clientHeight,
+        nx1: p.x / canvas.clientWidth,
+        ny1: p.y / canvas.clientHeight,
+        color: currentColor,
+        size: size,
+        opacity: currentOpacity,
+        type: 'sign'
+    });
+
+    lastX = p.x;
+    lastY = p.y;
 }
 function stopDraw(e) { e.preventDefault(); drawing=false; }
 

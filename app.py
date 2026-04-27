@@ -28,15 +28,16 @@ def ipad_welcome():
 def screen_welcome():
     return render_template('screen_welcome.html')
 
-# -- SOCKET EVENTS --
 @socketio.on('stroke')
 def handle_stroke(data):
+    # 'broadcast=True' sends it to every connected client EXCEPT the sender
+    # because we set include_self=False
     emit('stroke', data, broadcast=True, include_self=False)
 
 @socketio.on('clear')
 def handle_clear(data=None):
-    emit('clear', data or {}, broadcast=True, include_self=False)
-
+    emit('clear', data or {'type': 'sign'}, broadcast=True, include_self=False)
+    
 @socketio.on('welcome_trigger')
 def handle_welcome_trigger():
     emit('welcome_trigger', broadcast=True, include_self=False)
