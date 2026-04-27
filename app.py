@@ -8,11 +8,9 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'inkflow-v3-secret')
 
-socketio = SocketIO(
-    app, 
-    cors_allowed_origins="*", 
-    async_mode='eventlet'
-)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+
+# ... (rest of your routes/events)
 
 # ── PAGES ──────────────────────────────────────────────
 
