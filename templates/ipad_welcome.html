@@ -20,7 +20,7 @@
 
     .bg {
       position:fixed; inset:0; z-index:0;
-      background: url('/static/images/bg_ipad_welcome.jpg') center/cover no-repeat;
+      background: url('/static/images/bg_ipad_welcome.png') center/cover no-repeat;
     }
     .bg::after { content:''; position:absolute; inset:0; background:rgba(0,0,0,0.5); }
 
@@ -143,7 +143,14 @@
 </div>
 
 <div class="shell">
-
+  <div class="topbar">
+    <a href="/" class="back-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      BACK
+    </a>
+    <span class="page-title">WELCOME CONTROLLER</span>
+    <div class="status-dot"><div class="sdot"></div>CONNECTED</div>
+  </div>
 
   <div class="main">
     <div class="label-top">TAP TO TRIGGER THE SCREEN</div>
@@ -158,16 +165,15 @@
       <div class="btn-sub-big">Play on Screen</div>
     </button>
 
-   
+    <div class="state-bar" id="stateBar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      READY TO BROADCAST
+    </div>
   </div>
 </div>
 
 <script>
-const socket = io({
-    transports: ['websocket', 'polling'],
-    upgrade: true,
-    rememberUpgrade: true
-});
+const socket = io();
 let busy = false;
 
 function triggerWelcome() {
