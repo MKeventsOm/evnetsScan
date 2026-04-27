@@ -5,9 +5,8 @@ from flask_socketio import SocketIO, emit
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'inkflow-v3-secret')
 
-# Change async_mode to 'eventlet' for better production support
+# Make sure it's eventlet here
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
-
 # -- PAGES --
 @app.route('/')
 def index():
@@ -43,6 +42,5 @@ def handle_welcome_trigger():
     emit('welcome_trigger', broadcast=True, include_self=False)
 
 if __name__ == '__main__':
-    # Railway provides a PORT environment variable
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port)
