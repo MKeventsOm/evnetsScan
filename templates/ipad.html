@@ -309,15 +309,48 @@ function resizeCanvas() {
 // 2. UNIFIED COORDINATE CALCULATOR
 function getPos(e) {
     const rect = canvas.getBoundingClientRect();
-    // Support for both mouse/pointer events and legacy touch if needed
+    // Use clientX for pointers/mouse, and touches[0] for legacy touch
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
     
+    // We calculate the position RELATIVE to the canvas element
     return {
         x: clientX - rect.left,
         y: clientY - rect.top,
-        pressure: e.pressure !== undefined && e.pressure > 0 ? e.pressure : 0.5
+        pressure: e.pressure > 0 ? e.pressure : 0.5
     };
+}
+
+function draw(e) {
+    if (!drawing) return;
+    if (e.cancelable) e.preventDefault();
+
+    const p = getPos(e);
+    
+    // Drawing locally on iPad
+    ctx.lineWidth = currentSize * (0.4 + p.pressure * 0.9);
+    ctx.globalAlpha = currentOpacity;
+    ctx.strokeStyle = currentColor;
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+
+    // IMPORTANT: Send coordinates as a percentage (0 to 1)
+    // This makes sure the line is in the same spot regardless of screen size
+    socket.emit('stroke', {
+        nx0: lastX / canvas.offsetWidth,
+        ny0: lastY / canvas.offsetHeight,
+        nx1: p.x / canvas.offsetWidth,
+        ny1: p.y / canvas.offsetHeight,
+        color: currentColor,
+        size: ctx.lineWidth,
+        opacity: currentOpacity,
+        type: 'sign'
+    });
+
+    lastX = p.x;
+    lastY = p.y;
 }
 
 // 3. UNIFIED DRAWING CORE
