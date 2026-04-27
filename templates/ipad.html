@@ -309,11 +309,10 @@ function resizeCanvas() {
 // 2. UNIFIED COORDINATE CALCULATOR
 function getPos(e) {
     const rect = canvas.getBoundingClientRect();
-    // Use clientX for pointers/mouse, and touches[0] for legacy touch
     const clientX = e.clientX || (e.touches && e.touches[0].clientX);
     const clientY = e.clientY || (e.touches && e.touches[0].clientY);
     
-    // We calculate the position RELATIVE to the canvas element
+    // We calculate position based on the CSS Box (rect), NOT internal canvas pixels
     return {
         x: clientX - rect.left,
         y: clientY - rect.top,
@@ -326,25 +325,27 @@ function draw(e) {
     if (e.cancelable) e.preventDefault();
 
     const p = getPos(e);
+    const rect = canvas.getBoundingClientRect(); // Get current CSS size
     
-    // Drawing locally on iPad
     ctx.lineWidth = currentSize * (0.4 + p.pressure * 0.9);
     ctx.globalAlpha = currentOpacity;
     ctx.strokeStyle = currentColor;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
     ctx.beginPath();
     ctx.moveTo(lastX, lastY);
     ctx.lineTo(p.x, p.y);
     ctx.stroke();
 
-    // IMPORTANT: Send coordinates as a percentage (0 to 1)
-    // This makes sure the line is in the same spot regardless of screen size
+    // SENDING MATH: We divide by the CSS size (rect.width/height)
     socket.emit('stroke', {
-        nx0: lastX / canvas.offsetWidth,
-        ny0: lastY / canvas.offsetHeight,
-        nx1: p.x / canvas.offsetWidth,
-        ny1: p.y / canvas.offsetHeight,
+        nx0: lastX / rect.width,
+        ny0: lastY / rect.height,
+        nx1: p.x / rect.width,
+        ny1: p.y / rect.height,
         color: currentColor,
-        size: ctx.lineWidth,
+        size: currentSize, // Send base size, let receiver scale it
         opacity: currentOpacity,
         type: 'sign'
     });
